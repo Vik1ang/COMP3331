@@ -1,6 +1,6 @@
 # Lab1
 
-[TOC]
+<!-- [TOC] -->
 
 ## Exercise 1: nslookup
 
@@ -29,8 +29,8 @@ It always uses for testing purpose. For example, try to `ping 127.0.0.1` can tes
 
 ## Exercise 2: Use ping to test host reachability
 
-|Website| ping if reachable | Reason | Reachable from Web browser |
-|----|----|----|----|-----|
+|Website| ping if reachable | Reason | Reachable from Web browser|
+|----|----|----|----|
 |www.unsw.edu.au| Reachable | | Reachable |
 |www.getfittest.com.au | Unreachable | Unknown host. Maybe it is not a exist website, cannot visit | Unreachable |
 |www.mit.edu|Reachable| | Reachable|
