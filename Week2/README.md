@@ -14,4 +14,4 @@
 
 ### Lab
 
-[Lab 1](Lab%20Exercise%201_%20Tools%20of%20the%20Trade%20_%20COMP3331%2020T3%20_%20WebCMS3.pdf)
+[Lab1](lab1/Lab%20Exercise%201_%20Tools%20of%20the%20Trade%20_%20COMP3331%2020T3%20_%20WebCMS3.pdf)
