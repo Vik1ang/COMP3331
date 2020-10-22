@@ -1,95 +1,108 @@
-import java.io.*;
-import java.net.*;
-import java.util.*;
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.InputStreamReader;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.util.Random;
 
-/*
- * Server to process ping requests over UDP. 
- * The server sits in an infinite loop listening for incoming UDP packets. 
- * When a packet comes in, the server simply sends the encapsulated data back to the client.
- */
+public class PingClient {
+    private static final int TIME_OUT = 600; // time out
+    private static final int AVERAGE_DELAY = 100;  // milliseconds
 
-public class PingServer
-{
-   private static final double LOSS_RATE = 0.3;
-   private static final int AVERAGE_DELAY = 100;  // milliseconds
+    public static void main(String[] args) throws Exception {
+        // Get command line argument
+        if (args.length != 2) {
+            System.out.println("Required arguments: host port");
+            return;
+        }
+        InetAddress hostAddress = InetAddress.getByName(args[0]);
+        int port = Integer.parseInt(args[1]);
 
-   public static void main(String[] args) throws Exception
-   {
-      // Get command line argument.
-      if (args.length != 1) {
-         System.out.println("Required arguments: port");
-         return;
-      }
-      int port = Integer.parseInt(args[0]);
+        // Create random number generator for use in simulating
+        // packet loss and network delay.
+        Random random = new Random();
 
-      // Create random number generator for use in simulating 
-      // packet loss and network delay.
-      Random random = new Random();
+        // create socket which connects to server
+        DatagramSocket clientSocket = new DatagramSocket();
 
-      // Create a datagram socket for receiving and sending UDP packets
-      // through the port specified on the command line.
-      DatagramSocket socket = new DatagramSocket(port);
+        long maxRtt = Long.MIN_VALUE;
+        long minRtt = Long.MAX_VALUE;
+        long delay = 0;
+        int count = 0;
+        long totalRtt = 0;
+        int seq = 3331;
+        while (seq <= 3345) {
+            long sendTime = System.currentTimeMillis();
+            String send = "PING " + "seq = " + seq + " " + sendTime + "\r\n";
 
-      // Processing loop.
-      while (true) {
-         // Create a datagram packet to hold incomming UDP packet.
-         DatagramPacket request = new DatagramPacket(new byte[1024], 1024);
+            byte[] buf = send.getBytes();
 
-         // Block until the host receives a UDP packet.
-         socket.receive(request);
-         
-         // Print the recieved data.
-         printData(request);
+            DatagramPacket clientPacket = new DatagramPacket(buf, buf.length, hostAddress, port);
 
-         // Decide whether to reply, or simulate packet loss.
-         if (random.nextDouble() < LOSS_RATE) {
-            System.out.println("   Reply not sent.");
-            continue; 
-         }
+            // Simulate network delay
+            Thread.sleep((int) (random.nextDouble() * 2 * AVERAGE_DELAY));
 
-         // Simulate network delay.
-         Thread.sleep((int) (random.nextDouble() * 2 * AVERAGE_DELAY));
+            try {
+                // send
+                clientSocket.send(clientPacket);
+                // set time out to 1 sec
+                clientSocket.setSoTimeout(TIME_OUT);
+                // receive reply
+                DatagramPacket responsePacket = new DatagramPacket(new byte[1024], 1024);
+                clientSocket.receive(responsePacket);
+                long receiveTime = System.currentTimeMillis();
+                delay = receiveTime - sendTime;
+                totalRtt += delay;
+                printData(responsePacket, delay, seq);
+                count++;
+            } catch (Exception e) {
+                System.out.println("ping to " + args[0] + ", seq = " + seq + ", time out");
+            } finally {
+                if (delay > maxRtt) {
+                    maxRtt = delay;
+                }
+                if (delay < minRtt) {
+                    minRtt = delay;
+                }
+            }
+            seq++;
+        }
+        System.out.println("Minimum rtt :" + minRtt + " ms");
+        System.out.println("Maximum rtt :" + maxRtt + " ms");
+        System.out.println("Average rtt :" + totalRtt / count + " ms");
 
-         // Send reply.
-         InetAddress clientHost = request.getAddress();
-         int clientPort = request.getPort();
-         byte[] buf = request.getData();
-         DatagramPacket reply = new DatagramPacket(buf, buf.length, clientHost, clientPort);
-         socket.send(reply);
+    }
 
-         System.out.println("   Reply sent.");
-      }
-   }
+    /*
+     * Print ping data to the standard output stream.
+     * this one imitates PingServer.java
+     */
+    private static void printData(DatagramPacket response, long delay, int sequence_Number) throws Exception {
+        // Obtain references to the packet's array of bytes.
+        // byte[] buf = response.getData();
 
-   /* 
-    * Print ping data to the standard output stream.
-    */
-   private static void printData(DatagramPacket request) throws Exception
-   {
-      // Obtain references to the packet's array of bytes.
-      byte[] buf = request.getData();
+        // Wrap the bytes in a byte array input stream,
+        // so that you can read the data as a stream of bytes.
+        // ByteArrayInputStream bais = new ByteArrayInputStream(buf);
 
-      // Wrap the bytes in a byte array input stream,
-      // so that you can read the data as a stream of bytes.
-      ByteArrayInputStream bais = new ByteArrayInputStream(buf);
+        // Wrap the byte array output stream in an input stream reader,
+        // so you can read the data as a stream of characters.
+        // InputStreamReader isr = new InputStreamReader(bais);
 
-      // Wrap the byte array output stream in an input stream reader,
-      // so you can read the data as a stream of characters.
-      InputStreamReader isr = new InputStreamReader(bais);
+        // Wrap the input stream reader in a bufferred reader,
+        // so you can read the character data a line at a time.
+        // (A line is a sequence of chars terminated by any combination of \r and \n.)
+        // BufferedReader br = new BufferedReader(isr);
 
-      // Wrap the input stream reader in a bufferred reader,
-      // so you can read the character data a line at a time.
-      // (A line is a sequence of chars terminated by any combination of \r and \n.) 
-      BufferedReader br = new BufferedReader(isr);
+        // The message data is contained in a single line, so read this line.
+        // String line = br.readLine();
 
-      // The message data is contained in a single line, so read this line.
-      String line = br.readLine();
-
-      // Print host address and data received from it.
-      System.out.println(
-         "Received from " + 
-         request.getAddress().getHostAddress() + 
-         ": " +
-         new String(line) );
-   }
+        // Print host address and data received from it.
+        System.out.println(
+                "ping to " +
+                        response.getAddress().getHostAddress() +
+                        ", " + "seq = " + sequence_Number +
+                        ", rtt = " + delay + " ms");
+    }
 }
